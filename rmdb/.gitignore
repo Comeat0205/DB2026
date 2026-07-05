@@ -1,0 +1,35 @@
+# CMake / compile outputs
+build/
+rmdb_client/build/
+**/cmake-build-*/
+**/CMakeCache.txt
+**/CMakeFiles/
+**/Makefile
+**/cmake_install.cmake
+**/CTestTestfile.cmake
+**/install_manifest.txt
+compile_commands.json
+
+# Object files & libraries
+*.o
+*.a
+*.so
+*.dylib
+
+# Executables
+bin/
+rmdb_client/bin/
+
+# Local test / runtime database files
+build/dbTest/
+**/*_test_db/
+**/db.meta
+**/db.log
+**/output.txt
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
