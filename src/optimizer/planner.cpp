@@ -10,7 +10,8 @@ See the Mulan PSL v2 for more details. */
 
 #include "planner.h"
 
-#include <memory>
+#include <map>
+#include <unordered_map>
 
 #include "execution/executor_delete.h"
 #include "execution/executor_index_scan.h"
@@ -22,16 +23,85 @@ See the Mulan PSL v2 for more details. */
 #include "index/ix.h"
 #include "record_printer.h"
 
-// 目前的索引匹配规则为：完全匹配索引字段，且全部为单点查询，不会自动调整where条件的顺序
-bool Planner::get_index_cols(std::string tab_name, std::vector<Condition> curr_conds, std::vector<std::string>& index_col_names) {
+// 最左匹配原则：选取匹配列数最多的索引，并调整 WHERE 条件顺序
+/**
+ * @brief 根据最左前缀原则选择可用索引，并重排条件顺序
+ * @param tab_name 表名
+ * @param curr_conds 该表的 WHERE 条件（会被重排）
+ * @param index_col_names 输出：匹配到的索引列名（按索引定义顺序）
+ * @return 是否找到可用索引
+ */
+bool Planner::get_index_cols(std::string tab_name, std::vector<Condition> &curr_conds,
+                             std::vector<std::string> &index_col_names) {
     index_col_names.clear();
-    for(auto& cond: curr_conds) {
-        if(cond.is_rhs_val && cond.op == OP_EQ && cond.lhs_col.tab_name.compare(tab_name) == 0)
-            index_col_names.push_back(cond.lhs_col.col_name);
+    // col_name -> (比较类型, 条件下标)；0=范围下界，1=等值，2=范围上界
+    std::map<std::string, std::pair<int, int>> mp;
+    for (size_t i = 0; i < curr_conds.size(); i++) {
+        auto &cond = curr_conds[i];
+        if (cond.lhs_col.tab_name != tab_name || !cond.is_rhs_val) {
+            continue;
+        }
+        int op = -1;
+        if (cond.op == OP_EQ) {
+            op = 1;
+        } else if (cond.op == OP_GT || cond.op == OP_GE) {
+            op = 0;
+        } else if (cond.op == OP_LT || cond.op == OP_LE) {
+            op = 2;
+        }
+        if (op == -1) {
+            continue;
+        }
+        if (mp.count(cond.lhs_col.col_name) && op == 2) {
+            continue;  // 同列已有条件下，保留更紧的范围下界
+        }
+        mp[cond.lhs_col.col_name] = {op, static_cast<int>(i)};
     }
-    TabMeta& tab = sm_manager_->db_.get_table(tab_name);
-    if(tab.is_index(index_col_names)) return true;
-    return false;
+
+    TabMeta &tab = sm_manager_->db_.get_table(tab_name);
+    int mx = 0;
+    std::vector<int> ids;
+    std::vector<ColMeta> cols;
+    for (const auto &index : tab.indexes) {
+        int cnt = 0;
+        std::vector<int> tmp;
+        for (const auto &col : index.cols) {
+            if (!mp.count(col.name)) {
+                break;
+            }
+            std::pair<int, int> val = mp[col.name];
+            cnt++;
+            tmp.push_back(val.second);
+            if (val.first == 0) {
+                break;  // 遇到范围下界后停止前缀扩展
+            }
+        }
+        if (cnt > mx) {
+            mx = cnt;
+            ids = tmp;
+            cols = index.cols;
+        }
+    }
+    if (mx == 0) {
+        return false;
+    }
+
+    std::vector<Condition> reordered;
+    std::unordered_map<int, bool> vis;
+    for (int id : ids) {
+        reordered.push_back(curr_conds[id]);
+        vis[id] = true;
+    }
+    for (size_t i = 0; i < curr_conds.size(); i++) {
+        if (!vis.count(static_cast<int>(i))) {
+            reordered.push_back(curr_conds[i]);
+        }
+    }
+    curr_conds = std::move(reordered);
+    for (const auto &col : cols) {
+        index_col_names.push_back(col.name);
+    }
+    return true;
 }
 
 /**
@@ -329,6 +399,8 @@ std::shared_ptr<Plan> Planner::do_planner(std::shared_ptr<Query> query, Context 
     } else if (auto x = std::dynamic_pointer_cast<ast::CreateIndex>(query->parse)) {
         // create index;
         plannerRoot = std::make_shared<DDLPlan>(T_CreateIndex, x->tab_name, x->col_names, std::vector<ColDef>());
+    } else if (auto x = std::dynamic_pointer_cast<ast::ShowIndex>(query->parse)) {
+        plannerRoot = std::make_shared<DDLPlan>(T_ShowIndex, x->tab_name, std::vector<std::string>(), std::vector<ColDef>());
     } else if (auto x = std::dynamic_pointer_cast<ast::DropIndex>(query->parse)) {
         // drop index
         plannerRoot = std::make_shared<DDLPlan>(T_DropIndex, x->tab_name, x->col_names, std::vector<ColDef>());

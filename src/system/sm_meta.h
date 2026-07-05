@@ -63,6 +63,19 @@ struct IndexMeta {
         }
         return is;
     }
+
+    friend bool operator==(const IndexMeta &a, const IndexMeta &b) {
+        // 按列名序列比较，用于 drop_index 查找
+        if (a.col_num != b.col_num || a.col_tot_len != b.col_tot_len) {
+            return false;
+        }
+        for (int i = 0; i < a.col_num; ++i) {
+            if (a.cols[i].name != b.cols[i].name) {
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
 /* 表元数据 */

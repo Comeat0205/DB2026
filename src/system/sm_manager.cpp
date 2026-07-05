@@ -13,7 +13,10 @@ See the Mulan PSL v2 for more details. */
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <fstream>
+#include <map>
+#include <unordered_map>
 
 #include "index/ix.h"
 #include "record/rm.h"
@@ -253,7 +256,41 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
  * @param {Context*} context
  */
 void SmManager::create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    TabMeta &tab = db_.get_table(tab_name);
+    if (tab.is_index(col_names)) {
+        throw IndexExistsError(tab_name, col_names);
+    }
+
+    std::vector<ColMeta> cols;
+    int tot_len = 0;
+    for (const auto &name : col_names) {
+        auto col = *tab.get_col(name);
+        cols.push_back(col);
+        tot_len += col.len;
+    }
+
+    ix_manager_->create_index(tab_name, cols);
+    IndexMeta im = {tab_name, tot_len, static_cast<int>(cols.size()), cols};
+    tab.indexes.push_back(im);
+
+    auto ix_name = ix_manager_->get_index_name(tab_name, cols);
+    ihs_.emplace(ix_name, ix_manager_->open_index(tab_name, cols));
+
+    // 将表中已有记录回填到 B+ 树
+    auto ih = ihs_.at(ix_name).get();
+    auto rfh = fhs_.at(tab_name).get();
+    std::vector<char> key(tot_len);
+    for (RmScan scan(rfh); !scan.is_end(); scan.next()) {
+        auto rid = scan.rid();
+        auto rec = rfh->get_record(rid, context);
+        int offset = 0;
+        for (auto &col : cols) {
+            memcpy(key.data() + offset, rec->data + col.offset, col.len);
+            offset += col.len;
+        }
+        ih->insert_entry(key.data(), rid, context ? context->txn_ : nullptr);
+    }
+    flush_meta();
 }
 
 /**
@@ -263,7 +300,24 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    TabMeta &tab = db_.get_table(tab_name);
+    if (!tab.is_index(col_names)) {
+        throw IndexNotFoundError(tab_name, col_names);
+    }
+
+    std::vector<ColMeta> cols;
+    for (const auto &name : col_names) {
+        cols.push_back(*tab.get_col(name));
+    }
+
+    tab.indexes.erase(tab.get_index_meta(col_names));
+    auto ix_name = ix_manager_->get_index_name(tab_name, cols);
+    if (ihs_.count(ix_name)) {
+        ix_manager_->close_index(ihs_.at(ix_name).get());
+        ihs_.erase(ix_name);
+    }
+    ix_manager_->destroy_index(tab_name, cols);
+    flush_meta();
 }
 
 /**
@@ -273,5 +327,52 @@ void SmManager::drop_index(const std::string& tab_name, const std::vector<std::s
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<ColMeta>& cols, Context* context) {
-    
+    TabMeta &tab = db_.get_table(tab_name);
+    int tot_len = 0;
+    for (const auto &col : cols) {
+        tot_len += col.len;
+    }
+    IndexMeta im = {tab_name, tot_len, static_cast<int>(cols.size()), cols};
+    auto pos = std::find(tab.indexes.begin(), tab.indexes.end(), im);
+    if (pos != tab.indexes.end()) {
+        tab.indexes.erase(pos);
+    }
+
+    auto ix_name = ix_manager_->get_index_name(tab_name, cols);
+    if (ihs_.count(ix_name)) {
+        ix_manager_->close_index(ihs_.at(ix_name).get());
+        ihs_.erase(ix_name);
+    }
+    if (ix_manager_->exists(tab_name, cols)) {
+        ix_manager_->destroy_index(tab_name, cols);
+    }
+    flush_meta();
+}
+
+/**
+ * @description: 显示表上的索引信息
+ * @param {string&} tab_name 表名称
+ * @param {Context*} context
+ */
+void SmManager::show_index(const std::string& tab_name, Context* context) {
+    TabMeta &tab = db_.get_table(tab_name);
+    std::fstream outfile;
+    outfile.open("output.txt", std::ios::out | std::ios::app);
+    RecordPrinter printer(3);
+    printer.print_separator(context);
+    for (const auto &index : tab.indexes) {
+        std::string col = "(";
+        for (size_t i = 0; i < index.cols.size(); ++i) {
+            if (i > 0) {
+                col += ",";
+            }
+            col += index.cols[i].name;
+        }
+        col += ")";
+        printer.print_record({tab.name, "unique", col}, context);
+        // 写入 output.txt，格式：| table_name | unique | (col1,col2) |
+        outfile << "| " << tab.name << " | unique | " << col << " |\n";
+    }
+    printer.print_separator(context);
+    outfile.close();
 }

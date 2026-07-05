@@ -82,6 +82,11 @@ class IndexEntryNotFoundError : public RMDBError {
     IndexEntryNotFoundError() : RMDBError("Index entry not found") {}
 };
 
+class IndexDuplicateKeyError : public RMDBError {
+   public:
+    IndexDuplicateKeyError() : RMDBError("Duplicate key value violates unique index constraint") {}
+};  // 唯一索引重复键
+
 // SM errors
 class DatabaseNotFoundError : public RMDBError {
    public:
