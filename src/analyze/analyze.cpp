@@ -22,7 +22,12 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
     {
         // 处理表名
         query->tables = std::move(x->tabs);
-        /** TODO: 检查表是否存在 */
+        // 检查 FROM 中的表是否存在
+        for (auto &tab_name : query->tables) {
+            if (!sm_manager_->db_.is_table(tab_name)) {
+                throw TableNotFoundError(tab_name);
+            }
+        }
 
         // 处理target list，再target list中添加上表名，例如 a.id
         for (auto &sv_sel_col : x->cols) {
@@ -48,8 +53,28 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
         get_clause(x->conds, query->conds);
         check_clause(query->tables, query->conds);
     } else if (auto x = std::dynamic_pointer_cast<ast::UpdateStmt>(parse)) {
-        /** TODO: */
-
+        // 解析 UPDATE 的 SET 子句与 WHERE 条件
+        if (!sm_manager_->db_.is_table(x->tab_name)) {
+            throw TableNotFoundError(x->tab_name);
+        }
+        TabMeta &tab = sm_manager_->db_.get_table(x->tab_name);
+        for (auto &sv_set_clause : x->set_clauses) {
+            auto col = tab.get_col(sv_set_clause->col_name);
+            Value rhs = convert_sv_value(sv_set_clause->val);
+            // INT 字面量可赋给 FLOAT 列
+            if (col->type == TYPE_FLOAT && rhs.type == TYPE_INT) {
+                rhs.set_float(static_cast<float>(rhs.int_val));
+            }
+            if (col->type != rhs.type) {
+                throw IncompatibleTypeError(coltype2str(col->type), coltype2str(rhs.type));
+            }
+            SetClause set_clause = {
+                .lhs = {.tab_name = x->tab_name, .col_name = sv_set_clause->col_name},
+                .rhs = rhs};
+            query->set_clauses.push_back(set_clause);
+        }
+        get_clause(x->conds, query->conds);
+        check_clause({x->tab_name}, query->conds);
     } else if (auto x = std::dynamic_pointer_cast<ast::DeleteStmt>(parse)) {
         //处理where条件
         get_clause(x->conds, query->conds);
@@ -84,8 +109,11 @@ TabCol Analyze::check_column(const std::vector<ColMeta> &all_cols, TabCol target
         }
         target.tab_name = tab_name;
     } else {
-        /** TODO: Make sure target column exists */
-        
+        // 已指定表名，校验列是否存在
+        TabMeta &tab = sm_manager_->db_.get_table(target.tab_name);
+        if (!tab.is_col(target.col_name)) {
+            throw ColumnNotFoundError(target.tab_name + '.' + target.col_name);
+        }
     }
     return target;
 }
@@ -131,6 +159,12 @@ void Analyze::check_clause(const std::vector<std::string> &tab_names, std::vecto
         ColType lhs_type = lhs_col->type;
         ColType rhs_type;
         if (cond.is_rhs_val) {
+            rhs_type = cond.rhs_val.type;
+            // WHERE 中 INT 常量可与 FLOAT 列比较
+            if (lhs_type == TYPE_FLOAT && rhs_type == TYPE_INT) {
+                cond.rhs_val.set_float(static_cast<float>(cond.rhs_val.int_val));
+                rhs_type = TYPE_FLOAT;
+            }
             cond.rhs_val.init_raw(lhs_col->len);
             rhs_type = cond.rhs_val.type;
         } else {

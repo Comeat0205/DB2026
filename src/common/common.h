@@ -74,6 +74,48 @@ struct Value {
 
 enum CompOp { OP_EQ, OP_NE, OP_LT, OP_GT, OP_LE, OP_GE };
 
+/** 比较两个列值，返回 -1/0/1 */
+inline int value_compare(const char *a, const char *b, ColType type, int col_len) {
+    switch (type) {
+        case TYPE_INT: {
+            int ia = *(int *)a;
+            int ib = *(int *)b;
+            return (ia < ib) ? -1 : ((ia > ib) ? 1 : 0);
+        }
+        case TYPE_FLOAT: {
+            float fa = *(float *)a;
+            float fb = *(float *)b;
+            return (fa < fb) ? -1 : ((fa > fb) ? 1 : 0);
+        }
+        case TYPE_STRING: {
+            int res = memcmp(a, b, col_len);
+            return res > 0 ? 1 : (res < 0 ? -1 : 0);
+        }
+        default:
+            throw InternalError("Unexpected data type");
+    }
+}
+
+/** 根据比较运算符判断条件是否成立 */
+inline bool evaluate_compare(const char *a, const char *b, ColType type, int col_len, CompOp op) {
+    switch (op) {
+        case OP_EQ:
+            return value_compare(a, b, type, col_len) == 0;
+        case OP_NE:
+            return value_compare(a, b, type, col_len) != 0;
+        case OP_LT:
+            return value_compare(a, b, type, col_len) == -1;
+        case OP_GT:
+            return value_compare(a, b, type, col_len) == 1;
+        case OP_LE:
+            return value_compare(a, b, type, col_len) != 1;
+        case OP_GE:
+            return value_compare(a, b, type, col_len) != -1;
+        default:
+            throw InternalError("Unexpected comparison operator");
+    }
+}
+
 struct Condition {
     TabCol lhs_col;   // left-hand side column
     CompOp op;        // comparison operator

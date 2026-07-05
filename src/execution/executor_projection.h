@@ -20,7 +20,19 @@ class ProjectionExecutor : public AbstractExecutor {
     std::unique_ptr<AbstractExecutor> prev_;        // 投影节点的儿子节点
     std::vector<ColMeta> cols_;                     // 需要投影的字段
     size_t len_;                                    // 字段总长度
-    std::vector<size_t> sel_idxs_;                  
+    std::vector<size_t> sel_idxs_;  // 投影列在子算子中的下标
+    bool is_end_{false};
+
+    /** 从子算子记录中提取投影列，组装新记录 */
+    std::unique_ptr<RmRecord> get_record_from_keys(RmRecord *rm) {
+        RmRecord rec(len_);
+        for (size_t i = 0; i < cols_.size(); i++) {
+            auto &col = cols_[i];
+            auto &prev_col = prev_->cols().at(sel_idxs_[i]);
+            memcpy(rec.data + col.offset, rm->data + prev_col.offset, col.len);
+        }
+        return std::make_unique<RmRecord>(rec);
+    }
 
    public:
     ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols) {
@@ -39,13 +51,28 @@ class ProjectionExecutor : public AbstractExecutor {
         len_ = curr_offset;
     }
 
-    void beginTuple() override {}
+    void beginTuple() override {
+        prev_->beginTuple();
+        is_end_ = prev_->is_end();
+    }
 
-    void nextTuple() override {}
+    void nextTuple() override {
+        prev_->nextTuple();
+        is_end_ = prev_->is_end();
+    }
 
     std::unique_ptr<RmRecord> Next() override {
-        return nullptr;
+        if (is_end_) {
+            return nullptr;
+        }
+        return get_record_from_keys(prev_->Next().get());
     }
+
+    bool is_end() const override { return is_end_; }
+
+    size_t tupleLen() const override { return len_; }
+
+    const std::vector<ColMeta> &cols() const override { return cols_; }
 
     Rid &rid() override { return _abstract_rid; }
 };

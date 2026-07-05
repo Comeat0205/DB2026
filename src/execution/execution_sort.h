@@ -9,6 +9,8 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 #pragma once
+#include <algorithm>
+
 #include "execution_defs.h"
 #include "execution_manager.h"
 #include "executor_abstract.h"
@@ -18,32 +20,60 @@ See the Mulan PSL v2 for more details. */
 class SortExecutor : public AbstractExecutor {
    private:
     std::unique_ptr<AbstractExecutor> prev_;
-    ColMeta cols_;                              // 框架中只支持一个键排序，需要自行修改数据结构支持多个键排序
-    size_t tuple_num;
+    ColMeta sort_col_;
     bool is_desc_;
-    std::vector<size_t> used_tuple;
-    std::unique_ptr<RmRecord> current_tuple;
+    size_t tuple_idx_;
+    bool is_end_{false};
+    std::vector<std::unique_ptr<RmRecord>> tuples_;  // 排序后的全部结果
 
    public:
     SortExecutor(std::unique_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc) {
         prev_ = std::move(prev);
-        cols_ = prev_->get_col_offset(sel_cols);
+        sort_col_ = *prev_->get_col(prev_->cols(), sel_cols);
         is_desc_ = is_desc;
-        tuple_num = 0;
-        used_tuple.clear();
+        tuple_idx_ = 0;
     }
 
-    void beginTuple() override { 
-        
+    void beginTuple() override {
+        tuples_.clear();
+        tuple_idx_ = 0;
+        // 拉取子算子全部结果后排序
+        prev_->beginTuple();
+        while (!prev_->is_end()) {
+            tuples_.push_back(prev_->Next());
+            prev_->nextTuple();
+        }
+        std::sort(tuples_.begin(), tuples_.end(), [this](const std::unique_ptr<RmRecord> &lhs,
+                                                          const std::unique_ptr<RmRecord> &rhs) {
+            int res = value_compare(lhs->data + sort_col_.offset, rhs->data + sort_col_.offset, sort_col_.type,
+                                    sort_col_.len);
+            if (is_desc_) {
+                return res > 0;
+            }
+            return res < 0;
+        });
+        is_end_ = tuples_.empty();
     }
 
     void nextTuple() override {
-        
+        tuple_idx_++;
+        if (tuple_idx_ >= tuples_.size()) {
+            is_end_ = true;
+        }
     }
 
     std::unique_ptr<RmRecord> Next() override {
-        return nullptr;
+        if (is_end_) {
+            return nullptr;
+        }
+        return std::make_unique<RmRecord>(*tuples_[tuple_idx_]);
     }
+
+    bool is_end() const override { return is_end_; }
+
+    size_t tupleLen() const override { return prev_->tupleLen(); }
+
+    const std::vector<ColMeta> &cols() const override { return prev_->cols(); }
 
     Rid &rid() override { return _abstract_rid; }
 };
