@@ -1,6 +1,6 @@
 # CMake / compile outputs
-rmdb/build/
-rmdb/rmdb_client/build/
+build/
+rmdb_client/build/
 **/cmake-build-*/
 **/CMakeCache.txt
 **/CMakeFiles/
@@ -16,12 +16,12 @@ compile_commands.json
 *.so
 *.dylib
 
-# Executables (keep source; ignore built binaries under rmdb)
-rmdb/bin/
-rmdb/rmdb_client/bin/
+# Executables
+bin/
+rmdb_client/bin/
 
 # Local test / runtime database files
-rmdb/build/dbTest/
+build/dbTest/
 **/*_test_db/
 **/db.meta
 **/db.log
