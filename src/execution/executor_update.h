@@ -84,24 +84,53 @@ class UpdateExecutor : public AbstractExecutor {
             for (size_t i = 0; i < set_clauses_.size(); i++) {
                 memcpy(new_tuple.data + set_cols[i], set_clauses_[i].rhs.raw->data, set_lens[i]);
             }
-            // 更新索引：先删旧键，再插新键
+            std::vector<std::vector<char>> old_keys;
+            std::vector<std::vector<char>> new_keys;
+            old_keys.reserve(tab_.indexes.size());
+            new_keys.reserve(tab_.indexes.size());
             for (size_t i = 0; i < tab_.indexes.size(); ++i) {
                 auto &index = tab_.indexes[i];
-                auto ih = sm_manager_->ihs_
-                              .at(sm_manager_->get_ix_manager()->get_index_name(tab_name_, index.cols))
-                              .get();
-                char *old_key = new char[index.col_tot_len];
-                char *new_key = new char[index.col_tot_len];
+                std::vector<char> old_key(index.col_tot_len);
+                std::vector<char> new_key(index.col_tot_len);
                 int offset = 0;
                 for (size_t j = 0; j < index.col_num; ++j) {
-                    memcpy(old_key + offset, tuple->data + index.cols[j].offset, index.cols[j].len);
-                    memcpy(new_key + offset, new_tuple.data + index.cols[j].offset, index.cols[j].len);
+                    memcpy(old_key.data() + offset, tuple->data + index.cols[j].offset, index.cols[j].len);
+                    memcpy(new_key.data() + offset, new_tuple.data + index.cols[j].offset, index.cols[j].len);
                     offset += index.cols[j].len;
                 }
-                ih->delete_entry(old_key, context_->txn_);
-                ih->insert_entry(new_key, rid, context_->txn_);
-                delete[] old_key;
-                delete[] new_key;
+                old_keys.push_back(std::move(old_key));
+                new_keys.push_back(std::move(new_key));
+            }
+
+            // 先插入新键（唯一约束失败时不改动表与索引），再删旧键
+            std::vector<size_t> updated_indexes;
+            try {
+                for (size_t i = 0; i < tab_.indexes.size(); ++i) {
+                    if (memcmp(old_keys[i].data(), new_keys[i].data(), tab_.indexes[i].col_tot_len) == 0) {
+                        continue;
+                    }
+                    auto ih = sm_manager_->ihs_
+                                  .at(sm_manager_->get_ix_manager()->get_index_name(tab_name_, tab_.indexes[i].cols))
+                                  .get();
+                    ih->insert_entry(new_keys[i].data(), rid, context_->txn_);
+                    updated_indexes.push_back(i);
+                }
+                for (size_t idx : updated_indexes) {
+                    auto ih = sm_manager_->ihs_
+                                  .at(sm_manager_->get_ix_manager()->get_index_name(tab_name_,
+                                                                                     tab_.indexes[idx].cols))
+                                  .get();
+                    ih->delete_entry(old_keys[idx].data(), context_->txn_);
+                }
+            } catch (...) {
+                for (size_t idx : updated_indexes) {
+                    auto ih = sm_manager_->ihs_
+                                  .at(sm_manager_->get_ix_manager()->get_index_name(tab_name_,
+                                                                                     tab_.indexes[idx].cols))
+                                  .get();
+                    ih->delete_entry(new_keys[idx].data(), context_->txn_);
+                }
+                throw;
             }
             fh_->update_record(rid, new_tuple.data, context_);
         }
