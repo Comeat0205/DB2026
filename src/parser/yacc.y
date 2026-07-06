@@ -380,6 +380,13 @@ tableList:
         $$.jointree.push_back(
             std::make_shared<JoinExpr>($1.tables[0], $3.tables[0], $5, INNER_JOIN));
     }
+    |   tableList JOIN tableRef
+    {
+        // 兼容无 ON 的 JOIN，连接条件放在 WHERE 中
+        $$ = $1;
+        $$.tables.push_back($3.tables[0]);
+        $$.aliases.push_back($3.aliases[0]);
+    }
     ;
 
 tableRef:

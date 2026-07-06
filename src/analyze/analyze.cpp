@@ -67,8 +67,8 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
             }
         } else {
             // infer table name from column name
-            for (auto &sel_col : query->cols) {
-                sel_col = check_column(all_cols, sel_col);  // 列元数据校验
+            for (size_t i = 0; i < query->cols.size(); i++) {
+                query->cols[i] = check_column(all_cols, query->cols[i]);
             }
         }
         //处理where条件

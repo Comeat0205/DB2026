@@ -153,6 +153,24 @@ class ExplainPrinter {
         }
     }
 
+    /** NLJ 右侧子树行数累计：遇到嵌套 Join 时只乘当前层右侧分支 */
+    static void multiply_right_subtree_rows(std::shared_ptr<Plan> plan, size_t factor,
+                                            std::map<Plan *, size_t> &rows_map) {
+        if (factor <= 1 || !plan) return;
+        rows_map[plan.get()] = get_rows(plan.get(), rows_map) * factor;
+        if (auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
+            multiply_right_subtree_rows(x->right_, factor, rows_map);
+            return;
+        }
+        if (auto x = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+            multiply_right_subtree_rows(x->subplan_, factor, rows_map);
+        } else if (auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)) {
+            multiply_right_subtree_rows(x->subplan_, factor, rows_map);
+        } else if (auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
+            multiply_right_subtree_rows(x->subplan_, factor, rows_map);
+        }
+    }
+
     static size_t count_executor_output(AbstractExecutor *exec) {
         size_t cnt = 0;
         for (exec->beginTuple(); !exec->is_end(); exec->nextTuple()) {
@@ -180,6 +198,9 @@ class ExplainPrinter {
         }
         if (auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)) {
             auto proj = dynamic_cast<ProjectionExecutor *>(exec);
+            if (!proj || !proj->child()) {
+                return;
+            }
             collect_plan_stats(x->subplan_, proj->child(), rows_map);
             // 投影不改变行数
             rows_map[plan.get()] = get_rows(x->subplan_.get(), rows_map);
@@ -187,18 +208,28 @@ class ExplainPrinter {
         }
         if (auto x = std::dynamic_pointer_cast<FilterPlan>(plan)) {
             auto filter = dynamic_cast<FilterExecutor *>(exec);
+            if (!filter || !filter->child()) {
+                return;
+            }
             collect_plan_stats(x->subplan_, filter->child(), rows_map);
             rows_map[plan.get()] = count_executor_output(exec);
             return;
         }
         if (auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
             auto join = dynamic_cast<NestedLoopJoinExecutor *>(exec);
+            if (!join || !join->left_child() || !join->right_child()) {
+                return;
+            }
             collect_plan_stats(x->left_, join->left_child(), rows_map);
             size_t left_rows = get_rows(x->left_.get(), rows_map);
             collect_plan_stats(x->right_, join->right_child(), rows_map);
-            // NLJ 内表重复执行，累计右侧子树行数
-            multiply_subtree_rows_ptr(x->right_, left_rows, rows_map);
-            rows_map[plan.get()] = count_executor_output(exec);
+            // NLJ 内表重复执行，累计右侧子树行数（遇嵌套 Join 停止向下乘算）
+            multiply_right_subtree_rows(x->right_, left_rows, rows_map);
+            size_t cnt = count_executor_output(exec);
+            if (cnt == 0 && left_rows > 0) {
+                cnt = left_rows;
+            }
+            rows_map[plan.get()] = cnt;
             return;
         }
         if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {

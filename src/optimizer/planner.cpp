@@ -125,10 +125,10 @@ static void collect_all_conds(const std::shared_ptr<Plan> &plan, std::vector<Con
     }
 }
 
-/** 将 Scan 上的条件拆分为独立 Filter 节点 */
+/** 将 Scan 上的条件拆分为独立 Filter 节点（IndexScan 保留条件以正确走索引） */
 static std::shared_ptr<Plan> split_filters(const std::shared_ptr<Plan> &plan) {
     if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
-        if (x->conds_.empty()) {
+        if (x->conds_.empty() || x->tag == T_IndexScan) {
             return plan;
         }
         auto conds = std::move(x->conds_);
@@ -356,15 +356,7 @@ std::shared_ptr<Plan> pop_scan(int *scantbl, std::string table, std::vector<std:
 std::shared_ptr<Query> Planner::logical_optimization(std::shared_ptr<Query> query, Context *context)
 {
     //TODO 实现逻辑优化规则
-    // 无显式 JOIN ON 时，按表行数升序重排以优化连接顺序
-    auto sel = get_select_stmt(query->parse);
-    if (sel && sel->jointree.empty() && query->tables.size() > 1) {
-        std::sort(query->tables.begin(), query->tables.end(),
-                  [&](const std::string &a, const std::string &b) {
-                      return get_table_row_count(sm_manager_, a) < get_table_row_count(sm_manager_, b);
-                  });
-    }
-
+    // 连接顺序优化在 make_one_rel 中基于副本进行，避免打乱输出列顺序
     return query;
 }
 
@@ -386,6 +378,14 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
 {
     auto x = get_select_stmt(query->parse);
     std::vector<std::string> tables = query->tables;
+
+    // 逗号连接时按行数升序优化连接顺序（不改变 query->tables 列顺序）
+    if (query->joins.empty() && tables.size() > 1) {
+        std::sort(tables.begin(), tables.end(),
+                  [&](const std::string &a, const std::string &b) {
+                      return get_table_row_count(sm_manager_, a) < get_table_row_count(sm_manager_, b);
+                  });
+    }
 
     // 构建 alias -> table 映射
     std::map<std::string, std::string> alias_to_tab;
@@ -430,16 +430,22 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
 
             result = std::make_shared<JoinPlan>(T_NestLoop, left, right, ji.conds);
         }
-        // 连接剩余逗号分隔的表
+        // 连接剩余逗号分隔的表（左深树）
         for (auto &tab : tables) {
             if (joined.find(tab) == joined.end()) {
-                result = std::make_shared<JoinPlan>(T_NestLoop, scan_map[tab], result, std::vector<Condition>());
+                result = std::make_shared<JoinPlan>(T_NestLoop, result, scan_map[tab], std::vector<Condition>());
             }
         }
-        // 下推剩余 WHERE 条件
-        auto conds = query->conds;
-        for (auto &cond : conds) {
-            push_conds(&cond, result);
+        // 下推剩余 WHERE 条件，未能下推的包装为 Filter
+        std::vector<Condition> remaining_conds;
+        for (auto &cond : query->conds) {
+            Condition c = cond;
+            if (push_conds(&c, result) != 3) {
+                remaining_conds.push_back(std::move(cond));
+            }
+        }
+        if (!remaining_conds.empty()) {
+            result = std::make_shared<FilterPlan>(T_Filter, result, std::move(remaining_conds));
         }
         return result;
     }
@@ -514,36 +520,53 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
                                                                     std::move(left_need_to_join_executors), 
                                                                     std::move(right_need_to_join_executors), 
                                                                     join_conds);
-                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(temp_join_executors), 
-                                                                    std::move(table_join_executors), 
+                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(table_join_executors),
+                                                                    std::move(temp_join_executors), 
                                                                     std::vector<Condition>());
+                it = conds.erase(it);
             } else if(left_need_to_join_executors != nullptr || right_need_to_join_executors != nullptr) {
-                if(isneedreverse) {
+                std::shared_ptr<Plan> new_table;
+                bool need_swap = false;
+                if (left_need_to_join_executors != nullptr) {
+                    new_table = std::move(left_need_to_join_executors);
+                    need_swap = true;
+                } else {
+                    new_table = std::move(right_need_to_join_executors);
+                }
+                if (need_swap) {
                     std::map<CompOp, CompOp> swap_op = {
                         {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
                     };
                     std::swap(it->lhs_col, it->rhs_col);
                     it->op = swap_op.at(it->op);
-                    left_need_to_join_executors = std::move(right_need_to_join_executors);
                 }
                 std::vector<Condition> join_conds{*it};
-                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(left_need_to_join_executors), 
-                                                                    std::move(table_join_executors), join_conds);
+                // 左深连接树：已有结果在左，新表在右
+                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(table_join_executors),
+                                                                    std::move(new_table), join_conds);
+                it = conds.erase(it);
             } else {
-                push_conds(std::move(&(*it)), table_join_executors);
+                Condition c = *it;
+                if (push_conds(&c, table_join_executors) == 3) {
+                    it = conds.erase(it);
+                } else {
+                    ++it;
+                }
             }
-            it = conds.erase(it);
+        }
+        if (!conds.empty()) {
+            table_join_executors = std::make_shared<FilterPlan>(T_Filter, table_join_executors, std::move(conds));
         }
     } else {
         table_join_executors = table_scan_executors[0];
         scantbl[0] = 1;
     }
 
-    //连接剩余表
+    //连接剩余表（左深树：新表接在右侧）
     for (size_t i = 0; i < tables.size(); i++) {
         if(scantbl[i] == -1) {
-            table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(table_scan_executors[i]), 
-                                                    std::move(table_join_executors), std::vector<Condition>());
+            table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, std::move(table_join_executors), 
+                                                    std::move(table_scan_executors[i]), std::vector<Condition>());
         }
     }
 
@@ -598,6 +621,9 @@ std::shared_ptr<Plan> Planner::generate_select_plan(std::shared_ptr<Query> query
         std::vector<Condition> all_conds;
         collect_all_conds(plannerRoot, all_conds);
         all_conds.insert(all_conds.end(), query->conds.begin(), query->conds.end());
+        for (auto &j : query->joins) {
+            all_conds.insert(all_conds.end(), j.conds.begin(), j.conds.end());
+        }
         plannerRoot = push_projection(plannerRoot, sel_cols, all_conds);
     }
 

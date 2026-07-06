@@ -181,10 +181,10 @@ class Portal
         } else if(auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
             std::unique_ptr<AbstractExecutor> left = convert_plan_executor(x->left_, context);
             std::unique_ptr<AbstractExecutor> right = convert_plan_executor(x->right_, context);
-            std::unique_ptr<AbstractExecutor> join = std::make_unique<NestedLoopJoinExecutor>(
+            // 保留 plan 中的连接条件，供 EXPLAIN ANALYZE 输出计划树
+            return std::make_unique<NestedLoopJoinExecutor>(
                                 std::move(left), 
-                                std::move(right), std::move(x->conds_));
-            return join;
+                                std::move(right), x->conds_);
         } else if(auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
             return std::make_unique<SortExecutor>(convert_plan_executor(x->subplan_, context), 
                                             x->sel_col_, x->is_desc_);
