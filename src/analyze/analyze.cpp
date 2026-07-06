@@ -18,9 +18,28 @@ See the Mulan PSL v2 for more details. */
 std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
 {
     std::shared_ptr<Query> query = std::make_shared<Query>();
+    auto original_parse = parse;
+
+    // 处理 EXPLAIN ANALYZE
+    if (auto explain = std::dynamic_pointer_cast<ast::ExplainAnalyze>(parse)) {
+        query->is_explain = true;
+        parse = explain->select;
+    }
+
     if (auto x = std::dynamic_pointer_cast<ast::SelectStmt>(parse))
     {
         // 处理表名
+        // 先构建别名映射，再 move tabs
+        std::map<std::string, std::string> alias_to_tab;
+        for (size_t i = 0; i < x->tabs.size(); i++) {
+            std::string alias = (i < x->tab_aliases.size()) ? x->tab_aliases[i] : "";
+            if (!alias.empty()) {
+                alias_to_tab[alias] = x->tabs[i];
+                query->tab_to_alias[x->tabs[i]] = alias;
+            } else {
+                query->tab_to_alias[x->tabs[i]] = x->tabs[i];
+            }
+        }
         query->tables = std::move(x->tabs);
         // 检查 FROM 中的表是否存在
         for (auto &tab_name : query->tables) {
@@ -29,14 +48,17 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
             }
         }
 
-        // 处理target list，再target list中添加上表名，例如 a.id
+        std::vector<ColMeta> all_cols;
+        get_all_cols(query->tables, all_cols);
+
+        // 处理target list，在target list中添加上表名，例如 a.id
+        query->is_select_all = x->cols.empty();
         for (auto &sv_sel_col : x->cols) {
             TabCol sel_col = {.tab_name = sv_sel_col->tab_name, .col_name = sv_sel_col->col_name};
+            sel_col = resolve_alias_col(sel_col, alias_to_tab);
             query->cols.push_back(sel_col);
         }
         
-        std::vector<ColMeta> all_cols;
-        get_all_cols(query->tables, all_cols);
         if (query->cols.empty()) {
             // select all columns
             for (auto &col : all_cols) {
@@ -51,7 +73,18 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
         }
         //处理where条件
         get_clause(x->conds, query->conds);
+        resolve_alias_conds(query->conds, alias_to_tab);
         check_clause(query->tables, query->conds);
+        // 处理 JOIN ON 条件
+        for (auto &je : x->jointree) {
+            Query::JoinInfo ji;
+            ji.left = je->left;
+            ji.right = je->right;
+            get_clause(je->conds, ji.conds);
+            resolve_alias_conds(ji.conds, alias_to_tab);
+            check_clause(query->tables, ji.conds);
+            query->joins.push_back(std::move(ji));
+        }
     } else if (auto x = std::dynamic_pointer_cast<ast::UpdateStmt>(parse)) {
         // 解析 UPDATE 的 SET 子句与 WHERE 条件
         if (!sm_manager_->db_.is_table(x->tab_name)) {
@@ -87,8 +120,25 @@ std::shared_ptr<Query> Analyze::do_analyze(std::shared_ptr<ast::TreeNode> parse)
     } else {
         // do nothing
     }
-    query->parse = std::move(parse);
+    query->parse = std::move(original_parse);
     return query;
+}
+
+TabCol Analyze::resolve_alias_col(const TabCol &col, const std::map<std::string, std::string> &alias_to_tab) {
+    TabCol res = col;
+    if (!res.tab_name.empty() && alias_to_tab.count(res.tab_name)) {
+        res.tab_name = alias_to_tab.at(res.tab_name);
+    }
+    return res;
+}
+
+void Analyze::resolve_alias_conds(std::vector<Condition> &conds, const std::map<std::string, std::string> &alias_to_tab) {
+    for (auto &cond : conds) {
+        cond.lhs_col = resolve_alias_col(cond.lhs_col, alias_to_tab);
+        if (!cond.is_rhs_val) {
+            cond.rhs_col = resolve_alias_col(cond.rhs_col, alias_to_tab);
+        }
+    }
 }
 
 

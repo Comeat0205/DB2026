@@ -140,4 +140,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     const std::vector<ColMeta> &cols() const override { return cols_; }
 
     Rid &rid() override { return _abstract_rid; }
+
+    AbstractExecutor *left_child() override { return left_.get(); }
+    AbstractExecutor *right_child() override { return right_.get(); }
 };

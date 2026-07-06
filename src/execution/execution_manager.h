@@ -43,5 +43,7 @@ class QlManager {
     void select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, std::vector<TabCol> sel_cols,
                         Context *context);
 
+    void explain_analyze(std::shared_ptr<Plan> plan, std::unique_ptr<AbstractExecutor> root, Context *context);
+
     void run_dml(std::unique_ptr<AbstractExecutor> exec);
 };

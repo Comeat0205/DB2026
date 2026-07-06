@@ -22,7 +22,7 @@ using namespace ast;
 
 // keywords
 %token SHOW TABLES CREATE TABLE DROP DESC INSERT INTO VALUES DELETE FROM ASC ORDER BY
-WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN EXIT HELP TXN_BEGIN TXN_COMMIT TXN_ABORT TXN_ROLLBACK ORDER_BY ENABLE_NESTLOOP ENABLE_SORTMERGE
+WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN ON EXPLAIN ANALYZE EXIT HELP TXN_BEGIN TXN_COMMIT TXN_ABORT TXN_ROLLBACK ORDER_BY ENABLE_NESTLOOP ENABLE_SORTMERGE
 // non-keywords
 %token LEQ NEQ GEQ T_EOF
 
@@ -41,8 +41,9 @@ WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN EXIT HELP TXN_BEGIN TXN_CO
 %type <sv_expr> expr
 %type <sv_val> value
 %type <sv_vals> valueList
-%type <sv_str> tbName colName
-%type <sv_strs> tableList colNameList
+%type <sv_str> tbName colName optAlias
+%type <sv_strs> colNameList
+%type <sv_table_list> tableList tableRef
 %type <sv_col> col
 %type <sv_cols> colList selector
 %type <sv_set_clause> setClause
@@ -158,9 +159,19 @@ dml:
     {
         $$ = std::make_shared<UpdateStmt>($2, $4, $5);
     }
+    |   EXPLAIN ANALYZE SELECT selector FROM tableList optWhereClause opt_order_clause
+    {
+        auto sel = std::make_shared<SelectStmt>($4, $6.tables, $7, $8);
+        sel->tab_aliases = std::move($6.aliases);
+        sel->jointree = std::move($6.jointree);
+        $$ = std::make_shared<ExplainAnalyze>(sel);
+    }
     |   SELECT selector FROM tableList optWhereClause opt_order_clause
     {
-        $$ = std::make_shared<SelectStmt>($2, $4, $5, $6);
+        auto sel = std::make_shared<SelectStmt>($2, $4.tables, $5, $6);
+        sel->tab_aliases = std::move($4.aliases);
+        sel->jointree = std::move($4.jointree);
+        $$ = sel;
     }
     ;
 
@@ -351,18 +362,39 @@ selector:
     ;
 
 tableList:
-        tbName
+        tableRef
     {
-        $$ = std::vector<std::string>{$1};
+        $$ = $1;
     }
-    |   tableList ',' tbName
+    |   tableList ',' tableRef
     {
-        $$.push_back($3);
+        $$ = $1;
+        $$.tables.push_back($3.tables[0]);
+        $$.aliases.push_back($3.aliases[0]);
     }
-    |   tableList JOIN tbName
+    |   tableList JOIN tableRef ON whereClause
     {
-        $$.push_back($3);
+        $$ = $1;
+        $$.tables.push_back($3.tables[0]);
+        $$.aliases.push_back($3.aliases[0]);
+        $$.jointree.push_back(
+            std::make_shared<JoinExpr>($1.tables[0], $3.tables[0], $5, INNER_JOIN));
     }
+    ;
+
+tableRef:
+        tbName optAlias
+    {
+        TableListData data;
+        data.tables.push_back($1);
+        data.aliases.push_back($2);
+        $$ = data;
+    }
+    ;
+
+optAlias:
+        /* epsilon */ { $$ = std::string(); }
+    |   IDENTIFIER { $$ = $1; }
     ;
 
 opt_order_clause:

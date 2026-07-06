@@ -75,4 +75,6 @@ class ProjectionExecutor : public AbstractExecutor {
     const std::vector<ColMeta> &cols() const override { return cols_; }
 
     Rid &rid() override { return _abstract_rid; }
+
+    AbstractExecutor *child() override { return prev_.get(); }
 };

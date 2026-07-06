@@ -220,13 +220,19 @@ struct JoinExpr : public TreeNode {
             left(std::move(left_)), right(std::move(right_)), conds(std::move(conds_)), type(type_) {}
 };
 
+struct TableListData {
+    std::vector<std::string> tables;
+    std::vector<std::string> aliases;
+    std::vector<std::shared_ptr<JoinExpr>> jointree;
+};
+
 struct SelectStmt : public TreeNode {
     std::vector<std::shared_ptr<Col>> cols;
     std::vector<std::string> tabs;
     std::vector<std::shared_ptr<BinaryExpr>> conds;
     std::vector<std::shared_ptr<JoinExpr>> jointree;
+    std::vector<std::string> tab_aliases;
 
-    
     bool has_sort;
     std::shared_ptr<OrderBy> order;
 
@@ -239,6 +245,12 @@ struct SelectStmt : public TreeNode {
             order(std::move(order_)) {
                 has_sort = (bool)order;
             }
+};
+
+struct ExplainAnalyze : public TreeNode {
+    std::shared_ptr<SelectStmt> select;
+
+    ExplainAnalyze(std::shared_ptr<SelectStmt> select_) : select(std::move(select_)) {}
 };
 
 // set enable_nestloop
@@ -285,6 +297,8 @@ struct SemValue {
     std::shared_ptr<OrderBy> sv_orderby;
 
     SetKnobType sv_setKnobType;
+
+    TableListData sv_table_list;
 };
 
 extern std::shared_ptr<ast::TreeNode> parse_tree;

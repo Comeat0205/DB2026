@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 #include <cstring>
 #include <memory>
 #include <string>
+#include <map>
 #include <vector>
 #include "parser/ast.h"
 
@@ -43,7 +44,9 @@ typedef enum PlanTag{
     T_NestLoop,
     T_SortMerge,    // sort merge join
     T_Sort,
-    T_Projection
+    T_Projection,
+    T_Filter,
+    T_ExplainAnalyze
 } PlanTag;
 
 // 查询执行计划
@@ -100,6 +103,50 @@ class JoinPlan : public Plan
         std::vector<Condition> conds_;
         // future TODO: 后续可以支持的连接类型
         JoinType type;
+};
+
+class FilterPlan : public Plan
+{
+    public:
+        FilterPlan(PlanTag tag, std::shared_ptr<Plan> subplan, std::vector<Condition> conds)
+        {
+            Plan::tag = tag;
+            subplan_ = std::move(subplan);
+            conds_ = std::move(conds);
+        }
+        ~FilterPlan(){}
+        std::shared_ptr<Plan> subplan_;
+        std::vector<Condition> conds_;
+};
+
+class ExplainAnalyzePlan : public Plan
+{
+    public:
+        struct JoinInfo {
+            std::string left;
+            std::string right;
+            std::vector<Condition> conds;
+        };
+
+        ExplainAnalyzePlan(std::shared_ptr<Plan> subplan,
+                           std::map<std::string, std::string> tab_to_alias,
+                           bool is_select_all,
+                           std::vector<TabCol> sel_cols,
+                           std::vector<JoinInfo> joins = {})
+        {
+            Plan::tag = T_ExplainAnalyze;
+            subplan_ = std::move(subplan);
+            tab_to_alias_ = std::move(tab_to_alias);
+            is_select_all_ = is_select_all;
+            sel_cols_ = std::move(sel_cols);
+            joins_ = std::move(joins);
+        }
+        ~ExplainAnalyzePlan(){}
+        std::shared_ptr<Plan> subplan_;
+        std::map<std::string, std::string> tab_to_alias_;
+        bool is_select_all_;
+        std::vector<TabCol> sel_cols_;
+        std::vector<JoinInfo> joins_;
 };
 
 class ProjectionPlan : public Plan

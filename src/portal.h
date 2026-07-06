@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "execution/executor_update.h"
 #include "execution/executor_insert.h"
 #include "execution/executor_delete.h"
+#include "execution/executor_filter.h"
 #include "execution/execution_sort.h"
 #include "common/common.h"
 
@@ -30,7 +31,8 @@ typedef enum portalTag{
     PORTAL_ONE_SELECT,
     PORTAL_DML_WITHOUT_SELECT,
     PORTAL_MULTI_QUERY,
-    PORTAL_CMD_UTILITY
+    PORTAL_CMD_UTILITY,
+    PORTAL_EXPLAIN_ANALYZE
 } portalTag;
 
 
@@ -112,6 +114,10 @@ class Portal
                     throw InternalError("Unexpected field type");
                     break;
             }
+        } else if (auto x = std::dynamic_pointer_cast<ExplainAnalyzePlan>(plan)) {
+            std::shared_ptr<ProjectionPlan> p = std::dynamic_pointer_cast<ProjectionPlan>(x->subplan_);
+            std::unique_ptr<AbstractExecutor> root = convert_plan_executor(p, context);
+            return std::make_shared<PortalStmt>(PORTAL_EXPLAIN_ANALYZE, std::vector<TabCol>(), std::move(root), plan);
         } else {
             throw InternalError("Unexpected field type");
         }
@@ -142,6 +148,11 @@ class Portal
                 ql->run_cmd_utility(portal->plan, txn_id, context);
                 break;
             }
+            case PORTAL_EXPLAIN_ANALYZE:
+            {
+                ql->explain_analyze(portal->plan, std::move(portal->root), context);
+                break;
+            }
             default:
             {
                 throw InternalError("Unexpected field type");
@@ -158,6 +169,8 @@ class Portal
         if(auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)){
             return std::make_unique<ProjectionExecutor>(convert_plan_executor(x->subplan_, context), 
                                                         x->sel_cols_);
+        } else if(auto x = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+            return std::make_unique<FilterExecutor>(convert_plan_executor(x->subplan_, context), x->conds_);
         } else if(auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
             if(x->tag == T_SeqScan) {
                 return std::make_unique<SeqScanExecutor>(sm_manager_, x->tab_name_, x->conds_, context);

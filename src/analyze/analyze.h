@@ -34,6 +34,17 @@ class Query{
     std::vector<SetClause> set_clauses;
     //insert 的values值
     std::vector<Value> values;
+    // 表名到输出别名映射（EXPLAIN ANALYZE 用）
+    std::map<std::string, std::string> tab_to_alias;
+    bool is_explain = false;
+    bool is_select_all = false;
+    // JOIN 连接信息（左表、右表、ON 条件）
+    struct JoinInfo {
+        std::string left;
+        std::string right;
+        std::vector<Condition> conds;
+    };
+    std::vector<JoinInfo> joins;
 
     Query(){}
 
@@ -51,6 +62,8 @@ public:
 
 private:
     TabCol check_column(const std::vector<ColMeta> &all_cols, TabCol target);
+    TabCol resolve_alias_col(const TabCol &col, const std::map<std::string, std::string> &alias_to_tab);
+    void resolve_alias_conds(std::vector<Condition> &conds, const std::map<std::string, std::string> &alias_to_tab);
     void get_all_cols(const std::vector<std::string> &tab_names, std::vector<ColMeta> &all_cols);
     void get_clause(const std::vector<std::shared_ptr<ast::BinaryExpr>> &sv_conds, std::vector<Condition> &conds);
     void check_clause(const std::vector<std::string> &tab_names, std::vector<Condition> &conds);

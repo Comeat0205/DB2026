@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "executor_update.h"
 #include "index/ix.h"
 #include "record_printer.h"
+#include "explain_printer.h"
 
 const char *help_info = "Supported SQL syntax:\n"
                    "  command ;\n"
@@ -205,6 +206,16 @@ void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, 
     rec_printer.print_separator(context);
     // Print record count into buffer
     RecordPrinter::print_record_count(num_rec, context);
+}
+
+// EXPLAIN ANALYZE：只输出执行计划与统计信息
+void QlManager::explain_analyze(std::shared_ptr<Plan> plan, std::unique_ptr<AbstractExecutor> root,
+                                Context *context) {
+    auto x = std::dynamic_pointer_cast<ExplainAnalyzePlan>(plan);
+    if (!x) {
+        throw InternalError("Unexpected explain plan");
+    }
+    ExplainPrinter::write_explain(x->subplan_, root.get(), x->tab_to_alias_, x->is_select_all_, x->sel_cols_, x->joins_);
 }
 
 // 执行DML语句

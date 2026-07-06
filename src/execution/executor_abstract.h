@@ -44,6 +44,10 @@ class AbstractExecutor {
 
     virtual ColMeta get_col_offset(const TabCol &target) { return ColMeta();};
 
+    virtual AbstractExecutor *child() { return nullptr; }
+    virtual AbstractExecutor *left_child() { return nullptr; }
+    virtual AbstractExecutor *right_child() { return nullptr; }
+
     std::vector<ColMeta>::const_iterator get_col(const std::vector<ColMeta> &rec_cols, const TabCol &target) const {
         auto pos = std::find_if(rec_cols.begin(), rec_cols.end(), [&](const ColMeta &col) {
             return col.tab_name == target.tab_name && col.name == target.col_name;
