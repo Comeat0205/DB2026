@@ -537,7 +537,7 @@ union yyalloc
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  33
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  79
+#define YYNRULES  80
 /* YYNSTATES -- Number of states.  */
 #define YYNSTATES  151
 
@@ -599,8 +599,9 @@ static const yytype_int16 yyrline[] =
      190,   194,   201,   208,   212,   216,   223,   227,   234,   238,
      242,   246,   253,   260,   261,   268,   272,   279,   283,   290,
      294,   301,   305,   309,   313,   317,   321,   328,   332,   339,
-     343,   350,   357,   361,   365,   369,   375,   386,   396,   397,
-     401,   405,   409,   416,   417,   418,   422,   423,   426,   428
+     343,   350,   357,   361,   365,   369,   375,   383,   393,   403,
+     404,   408,   412,   416,   423,   424,   425,   429,   430,   433,
+     435
 };
 #endif
 
@@ -644,7 +645,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
 
-#define YYTABLE_NINF (-79)
+#define YYTABLE_NINF (-80)
 
 #define yytable_value_is_error(Yyn) \
   0
@@ -679,19 +680,19 @@ static const yytype_int8 yydefact[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     4,     3,    11,    12,    13,    14,     5,     0,     0,
        9,     6,    10,     7,     8,    15,     0,     0,     0,     0,
-       0,    78,    20,     0,     0,     0,    76,    77,     0,    79,
+       0,    79,    20,     0,     0,     0,    77,    78,     0,    80,
       62,    49,    63,     0,     0,    48,     0,     1,     2,     0,
        0,     0,    19,     0,     0,    43,     0,     0,     0,     0,
-       0,     0,    16,     0,     0,     0,     0,     0,    24,    79,
-      43,    59,     0,    17,    50,    43,    64,    68,    47,     0,
+       0,     0,    16,     0,     0,     0,     0,     0,    24,    80,
+      43,    59,     0,    17,    50,    43,    64,    69,    47,     0,
        0,    28,     0,     0,    30,     0,     0,    45,    44,     0,
-       0,    25,     0,     0,     0,    71,    69,    67,     0,    18,
+       0,    25,     0,     0,     0,    72,    70,    68,     0,    18,
        0,    33,     0,    35,    32,    21,     0,    22,    40,    38,
       39,    41,     0,    36,     0,    55,    54,    56,    51,    52,
-      53,     0,    60,    61,     0,    65,     0,    27,    43,    29,
+      53,     0,    60,    61,    67,    65,     0,    27,    43,    29,
        0,    31,    23,     0,    46,    57,    58,    42,     0,     0,
-      71,     0,    37,    66,    75,    70,    26,    34,    74,    73,
-      72
+      72,     0,    37,    66,    76,    71,    26,    34,    75,    74,
+      73
 };
 
 /* YYPGOTO[NTERM-NUM].  */
@@ -726,7 +727,7 @@ static const yytype_int16 yytable[] =
      140,    39,   108,   109,   110,   111,   101,   102,   103,     1,
       34,     2,    46,     3,     4,     5,   107,   106,     6,   132,
      133,    48,    49,    56,     7,     8,     9,   124,   125,    57,
-      77,    77,   -78,    58,    10,    77,    11,    12,    13,    14,
+      77,    77,   -79,    58,    10,    77,    11,    12,    13,    14,
       15,    16,    59,    60,    61,    63,    64,    66,    17,    65,
       67,    69,   136,    39,    73,    86,    96,    98,   126,   114,
       92,   139,   130,   141,   138,   147,    85,   129,   134,   128,
@@ -782,8 +783,9 @@ static const yytype_int8 yyr1[] =
       66,    66,    67,    68,    68,    68,    69,    69,    70,    70,
       70,    70,    71,    72,    72,    73,    73,    74,    74,    75,
       75,    76,    76,    76,    76,    76,    76,    77,    77,    78,
-      78,    79,    80,    80,    81,    81,    81,    82,    83,    83,
-      84,    84,    85,    86,    86,    86,    87,    87,    88,    89
+      78,    79,    80,    80,    81,    81,    81,    81,    82,    83,
+      83,    84,    84,    85,    86,    86,    86,    87,    87,    88,
+      89
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
@@ -795,8 +797,9 @@ static const yytype_int8 yyr2[] =
        1,     3,     2,     1,     4,     1,     1,     3,     1,     1,
        1,     1,     3,     0,     2,     1,     3,     3,     1,     1,
        3,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       3,     3,     1,     1,     1,     3,     5,     2,     0,     1,
-       3,     0,     2,     1,     1,     0,     1,     1,     1,     1
+       3,     3,     1,     1,     1,     3,     5,     3,     2,     0,
+       1,     3,     0,     2,     1,     1,     0,     1,     1,     1,
+       1
 };
 
 
@@ -1657,7 +1660,7 @@ yyreduce:
         parse_tree = (yyvsp[-1].sv_node);
         YYACCEPT;
     }
-#line 1661 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1664 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 3: /* start: HELP  */
@@ -1666,7 +1669,7 @@ yyreduce:
         parse_tree = std::make_shared<Help>();
         YYACCEPT;
     }
-#line 1670 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1673 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 4: /* start: EXIT  */
@@ -1675,7 +1678,7 @@ yyreduce:
         parse_tree = nullptr;
         YYACCEPT;
     }
-#line 1679 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1682 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 5: /* start: T_EOF  */
@@ -1684,7 +1687,7 @@ yyreduce:
         parse_tree = nullptr;
         YYACCEPT;
     }
-#line 1688 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1691 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 11: /* txnStmt: TXN_BEGIN  */
@@ -1692,7 +1695,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<TxnBegin>();
     }
-#line 1696 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1699 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 12: /* txnStmt: TXN_COMMIT  */
@@ -1700,7 +1703,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<TxnCommit>();
     }
-#line 1704 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1707 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 13: /* txnStmt: TXN_ABORT  */
@@ -1708,7 +1711,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<TxnAbort>();
     }
-#line 1712 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1715 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 14: /* txnStmt: TXN_ROLLBACK  */
@@ -1716,7 +1719,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<TxnRollback>();
     }
-#line 1720 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1723 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 15: /* dbStmt: SHOW TABLES  */
@@ -1724,7 +1727,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<ShowTables>();
     }
-#line 1728 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1731 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 16: /* dbStmt: SHOW INDEX FROM tbName  */
@@ -1732,7 +1735,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<ShowIndex>((yyvsp[0].sv_str));
     }
-#line 1736 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1739 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 17: /* setStmt: SET set_knob_type '=' VALUE_BOOL  */
@@ -1740,7 +1743,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<SetStmt>((yyvsp[-2].sv_setKnobType), (yyvsp[0].sv_bool));
     }
-#line 1744 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1747 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 18: /* ddl: CREATE TABLE tbName '(' fieldList ')'  */
@@ -1748,7 +1751,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<CreateTable>((yyvsp[-3].sv_str), (yyvsp[-1].sv_fields));
     }
-#line 1752 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1755 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 19: /* ddl: DROP TABLE tbName  */
@@ -1756,7 +1759,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<DropTable>((yyvsp[0].sv_str));
     }
-#line 1760 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1763 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 20: /* ddl: DESC tbName  */
@@ -1764,7 +1767,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<DescTable>((yyvsp[0].sv_str));
     }
-#line 1768 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1771 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 21: /* ddl: CREATE INDEX tbName '(' colNameList ')'  */
@@ -1772,7 +1775,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<CreateIndex>((yyvsp[-3].sv_str), (yyvsp[-1].sv_strs));
     }
-#line 1776 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1779 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 22: /* ddl: DROP INDEX tbName '(' colNameList ')'  */
@@ -1780,7 +1783,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<DropIndex>((yyvsp[-3].sv_str), (yyvsp[-1].sv_strs));
     }
-#line 1784 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1787 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 23: /* dml: INSERT INTO tbName VALUES '(' valueList ')'  */
@@ -1788,7 +1791,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<InsertStmt>((yyvsp[-4].sv_str), (yyvsp[-1].sv_vals));
     }
-#line 1792 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1795 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 24: /* dml: DELETE FROM tbName optWhereClause  */
@@ -1796,7 +1799,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<DeleteStmt>((yyvsp[-1].sv_str), (yyvsp[0].sv_conds));
     }
-#line 1800 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1803 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 25: /* dml: UPDATE tbName SET setClauses optWhereClause  */
@@ -1804,7 +1807,7 @@ yyreduce:
     {
         (yyval.sv_node) = std::make_shared<UpdateStmt>((yyvsp[-3].sv_str), (yyvsp[-1].sv_set_clauses), (yyvsp[0].sv_conds));
     }
-#line 1808 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1811 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 26: /* dml: EXPLAIN ANALYZE SELECT selector FROM tableList optWhereClause opt_order_clause  */
@@ -1815,7 +1818,7 @@ yyreduce:
         sel->jointree = std::move((yyvsp[-2].sv_table_list).jointree);
         (yyval.sv_node) = std::make_shared<ExplainAnalyze>(sel);
     }
-#line 1819 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1822 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 27: /* dml: SELECT selector FROM tableList optWhereClause opt_order_clause  */
@@ -1826,7 +1829,7 @@ yyreduce:
         sel->jointree = std::move((yyvsp[-2].sv_table_list).jointree);
         (yyval.sv_node) = sel;
     }
-#line 1830 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1833 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 28: /* fieldList: field  */
@@ -1834,7 +1837,7 @@ yyreduce:
     {
         (yyval.sv_fields) = std::vector<std::shared_ptr<Field>>{(yyvsp[0].sv_field)};
     }
-#line 1838 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1841 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 29: /* fieldList: fieldList ',' field  */
@@ -1842,7 +1845,7 @@ yyreduce:
     {
         (yyval.sv_fields).push_back((yyvsp[0].sv_field));
     }
-#line 1846 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1849 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 30: /* colNameList: colName  */
@@ -1850,7 +1853,7 @@ yyreduce:
     {
         (yyval.sv_strs) = std::vector<std::string>{(yyvsp[0].sv_str)};
     }
-#line 1854 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1857 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 31: /* colNameList: colNameList ',' colName  */
@@ -1858,7 +1861,7 @@ yyreduce:
     {
         (yyval.sv_strs).push_back((yyvsp[0].sv_str));
     }
-#line 1862 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1865 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 32: /* field: colName type  */
@@ -1866,7 +1869,7 @@ yyreduce:
     {
         (yyval.sv_field) = std::make_shared<ColDef>((yyvsp[-1].sv_str), (yyvsp[0].sv_type_len));
     }
-#line 1870 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1873 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 33: /* type: INT  */
@@ -1874,7 +1877,7 @@ yyreduce:
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_INT, sizeof(int));
     }
-#line 1878 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1881 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 34: /* type: CHAR '(' VALUE_INT ')'  */
@@ -1882,7 +1885,7 @@ yyreduce:
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_STRING, (yyvsp[-1].sv_int));
     }
-#line 1886 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1889 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 35: /* type: FLOAT  */
@@ -1890,7 +1893,7 @@ yyreduce:
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_FLOAT, sizeof(float));
     }
-#line 1894 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1897 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 36: /* valueList: value  */
@@ -1898,7 +1901,7 @@ yyreduce:
     {
         (yyval.sv_vals) = std::vector<std::shared_ptr<Value>>{(yyvsp[0].sv_val)};
     }
-#line 1902 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1905 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 37: /* valueList: valueList ',' value  */
@@ -1906,7 +1909,7 @@ yyreduce:
     {
         (yyval.sv_vals).push_back((yyvsp[0].sv_val));
     }
-#line 1910 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1913 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 38: /* value: VALUE_INT  */
@@ -1914,7 +1917,7 @@ yyreduce:
     {
         (yyval.sv_val) = std::make_shared<IntLit>((yyvsp[0].sv_int));
     }
-#line 1918 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1921 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 39: /* value: VALUE_FLOAT  */
@@ -1922,7 +1925,7 @@ yyreduce:
     {
         (yyval.sv_val) = std::make_shared<FloatLit>((yyvsp[0].sv_float));
     }
-#line 1926 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1929 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 40: /* value: VALUE_STRING  */
@@ -1930,7 +1933,7 @@ yyreduce:
     {
         (yyval.sv_val) = std::make_shared<StringLit>((yyvsp[0].sv_str));
     }
-#line 1934 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1937 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 41: /* value: VALUE_BOOL  */
@@ -1938,7 +1941,7 @@ yyreduce:
     {
         (yyval.sv_val) = std::make_shared<BoolLit>((yyvsp[0].sv_bool));
     }
-#line 1942 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1945 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 42: /* condition: col op expr  */
@@ -1946,13 +1949,13 @@ yyreduce:
     {
         (yyval.sv_cond) = std::make_shared<BinaryExpr>((yyvsp[-2].sv_col), (yyvsp[-1].sv_comp_op), (yyvsp[0].sv_expr));
     }
-#line 1950 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1953 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 43: /* optWhereClause: %empty  */
 #line 260 "/home/emma/db2026/src/parser/yacc.y"
                       { /* ignore*/ }
-#line 1956 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1959 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 44: /* optWhereClause: WHERE whereClause  */
@@ -1960,7 +1963,7 @@ yyreduce:
     {
         (yyval.sv_conds) = (yyvsp[0].sv_conds);
     }
-#line 1964 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1967 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 45: /* whereClause: condition  */
@@ -1968,7 +1971,7 @@ yyreduce:
     {
         (yyval.sv_conds) = std::vector<std::shared_ptr<BinaryExpr>>{(yyvsp[0].sv_cond)};
     }
-#line 1972 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1975 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 46: /* whereClause: whereClause AND condition  */
@@ -1976,7 +1979,7 @@ yyreduce:
     {
         (yyval.sv_conds).push_back((yyvsp[0].sv_cond));
     }
-#line 1980 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1983 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 47: /* col: tbName '.' colName  */
@@ -1984,7 +1987,7 @@ yyreduce:
     {
         (yyval.sv_col) = std::make_shared<Col>((yyvsp[-2].sv_str), (yyvsp[0].sv_str));
     }
-#line 1988 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1991 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 48: /* col: colName  */
@@ -1992,7 +1995,7 @@ yyreduce:
     {
         (yyval.sv_col) = std::make_shared<Col>("", (yyvsp[0].sv_str));
     }
-#line 1996 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 1999 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 49: /* colList: col  */
@@ -2000,7 +2003,7 @@ yyreduce:
     {
         (yyval.sv_cols) = std::vector<std::shared_ptr<Col>>{(yyvsp[0].sv_col)};
     }
-#line 2004 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2007 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 50: /* colList: colList ',' col  */
@@ -2008,7 +2011,7 @@ yyreduce:
     {
         (yyval.sv_cols).push_back((yyvsp[0].sv_col));
     }
-#line 2012 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2015 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 51: /* op: '='  */
@@ -2016,7 +2019,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_EQ;
     }
-#line 2020 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2023 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 52: /* op: '<'  */
@@ -2024,7 +2027,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_LT;
     }
-#line 2028 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2031 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 53: /* op: '>'  */
@@ -2032,7 +2035,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_GT;
     }
-#line 2036 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2039 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 54: /* op: NEQ  */
@@ -2040,7 +2043,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_NE;
     }
-#line 2044 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2047 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 55: /* op: LEQ  */
@@ -2048,7 +2051,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_LE;
     }
-#line 2052 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2055 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 56: /* op: GEQ  */
@@ -2056,7 +2059,7 @@ yyreduce:
     {
         (yyval.sv_comp_op) = SV_OP_GE;
     }
-#line 2060 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2063 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 57: /* expr: value  */
@@ -2064,7 +2067,7 @@ yyreduce:
     {
         (yyval.sv_expr) = std::static_pointer_cast<Expr>((yyvsp[0].sv_val));
     }
-#line 2068 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2071 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 58: /* expr: col  */
@@ -2072,7 +2075,7 @@ yyreduce:
     {
         (yyval.sv_expr) = std::static_pointer_cast<Expr>((yyvsp[0].sv_col));
     }
-#line 2076 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2079 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 59: /* setClauses: setClause  */
@@ -2080,7 +2083,7 @@ yyreduce:
     {
         (yyval.sv_set_clauses) = std::vector<std::shared_ptr<SetClause>>{(yyvsp[0].sv_set_clause)};
     }
-#line 2084 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2087 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 60: /* setClauses: setClauses ',' setClause  */
@@ -2088,7 +2091,7 @@ yyreduce:
     {
         (yyval.sv_set_clauses).push_back((yyvsp[0].sv_set_clause));
     }
-#line 2092 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2095 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 61: /* setClause: colName '=' value  */
@@ -2096,7 +2099,7 @@ yyreduce:
     {
         (yyval.sv_set_clause) = std::make_shared<SetClause>((yyvsp[-2].sv_str), (yyvsp[0].sv_val));
     }
-#line 2100 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2103 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 62: /* selector: '*'  */
@@ -2104,7 +2107,7 @@ yyreduce:
     {
         (yyval.sv_cols) = {};
     }
-#line 2108 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2111 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 64: /* tableList: tableRef  */
@@ -2112,7 +2115,7 @@ yyreduce:
     {
         (yyval.sv_table_list) = (yyvsp[0].sv_table_list);
     }
-#line 2116 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2119 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 65: /* tableList: tableList ',' tableRef  */
@@ -2122,7 +2125,7 @@ yyreduce:
         (yyval.sv_table_list).tables.push_back((yyvsp[0].sv_table_list).tables[0]);
         (yyval.sv_table_list).aliases.push_back((yyvsp[0].sv_table_list).aliases[0]);
     }
-#line 2126 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2129 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
   case 66: /* tableList: tableList JOIN tableRef ON whereClause  */
@@ -2134,86 +2137,97 @@ yyreduce:
         (yyval.sv_table_list).jointree.push_back(
             std::make_shared<JoinExpr>((yyvsp[-4].sv_table_list).tables[0], (yyvsp[-2].sv_table_list).tables[0], (yyvsp[0].sv_conds), INNER_JOIN));
     }
-#line 2138 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2141 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 67: /* tableRef: tbName optAlias  */
-#line 387 "/home/emma/db2026/src/parser/yacc.y"
+  case 67: /* tableList: tableList JOIN tableRef  */
+#line 384 "/home/emma/db2026/src/parser/yacc.y"
+    {
+        // 兼容无 ON 的 JOIN，连接条件放在 WHERE 中
+        (yyval.sv_table_list) = (yyvsp[-2].sv_table_list);
+        (yyval.sv_table_list).tables.push_back((yyvsp[0].sv_table_list).tables[0]);
+        (yyval.sv_table_list).aliases.push_back((yyvsp[0].sv_table_list).aliases[0]);
+    }
+#line 2152 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    break;
+
+  case 68: /* tableRef: tbName optAlias  */
+#line 394 "/home/emma/db2026/src/parser/yacc.y"
     {
         TableListData data;
         data.tables.push_back((yyvsp[-1].sv_str));
         data.aliases.push_back((yyvsp[0].sv_str));
         (yyval.sv_table_list) = data;
     }
-#line 2149 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2163 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 68: /* optAlias: %empty  */
-#line 396 "/home/emma/db2026/src/parser/yacc.y"
+  case 69: /* optAlias: %empty  */
+#line 403 "/home/emma/db2026/src/parser/yacc.y"
                       { (yyval.sv_str) = std::string(); }
-#line 2155 "/home/emma/db2026/src/parser/yacc.tab.cpp"
-    break;
-
-  case 69: /* optAlias: IDENTIFIER  */
-#line 397 "/home/emma/db2026/src/parser/yacc.y"
-                   { (yyval.sv_str) = (yyvsp[0].sv_str); }
-#line 2161 "/home/emma/db2026/src/parser/yacc.tab.cpp"
-    break;
-
-  case 70: /* opt_order_clause: ORDER BY order_clause  */
-#line 402 "/home/emma/db2026/src/parser/yacc.y"
-    { 
-        (yyval.sv_orderby) = (yyvsp[0].sv_orderby); 
-    }
 #line 2169 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 71: /* opt_order_clause: %empty  */
-#line 405 "/home/emma/db2026/src/parser/yacc.y"
-                      { /* ignore*/ }
+  case 70: /* optAlias: IDENTIFIER  */
+#line 404 "/home/emma/db2026/src/parser/yacc.y"
+                   { (yyval.sv_str) = (yyvsp[0].sv_str); }
 #line 2175 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 72: /* order_clause: col opt_asc_desc  */
-#line 410 "/home/emma/db2026/src/parser/yacc.y"
+  case 71: /* opt_order_clause: ORDER BY order_clause  */
+#line 409 "/home/emma/db2026/src/parser/yacc.y"
     { 
-        (yyval.sv_orderby) = std::make_shared<OrderBy>((yyvsp[-1].sv_col), (yyvsp[0].sv_orderby_dir));
+        (yyval.sv_orderby) = (yyvsp[0].sv_orderby); 
     }
 #line 2183 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 73: /* opt_asc_desc: ASC  */
-#line 416 "/home/emma/db2026/src/parser/yacc.y"
-                 { (yyval.sv_orderby_dir) = OrderBy_ASC;     }
+  case 72: /* opt_order_clause: %empty  */
+#line 412 "/home/emma/db2026/src/parser/yacc.y"
+                      { /* ignore*/ }
 #line 2189 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 74: /* opt_asc_desc: DESC  */
+  case 73: /* order_clause: col opt_asc_desc  */
 #line 417 "/home/emma/db2026/src/parser/yacc.y"
-                 { (yyval.sv_orderby_dir) = OrderBy_DESC;    }
-#line 2195 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    { 
+        (yyval.sv_orderby) = std::make_shared<OrderBy>((yyvsp[-1].sv_col), (yyvsp[0].sv_orderby_dir));
+    }
+#line 2197 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
-  case 75: /* opt_asc_desc: %empty  */
-#line 418 "/home/emma/db2026/src/parser/yacc.y"
-            { (yyval.sv_orderby_dir) = OrderBy_DEFAULT; }
-#line 2201 "/home/emma/db2026/src/parser/yacc.tab.cpp"
-    break;
-
-  case 76: /* set_knob_type: ENABLE_NESTLOOP  */
-#line 422 "/home/emma/db2026/src/parser/yacc.y"
-                    { (yyval.sv_setKnobType) = EnableNestLoop; }
-#line 2207 "/home/emma/db2026/src/parser/yacc.tab.cpp"
-    break;
-
-  case 77: /* set_knob_type: ENABLE_SORTMERGE  */
+  case 74: /* opt_asc_desc: ASC  */
 #line 423 "/home/emma/db2026/src/parser/yacc.y"
+                 { (yyval.sv_orderby_dir) = OrderBy_ASC;     }
+#line 2203 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    break;
+
+  case 75: /* opt_asc_desc: DESC  */
+#line 424 "/home/emma/db2026/src/parser/yacc.y"
+                 { (yyval.sv_orderby_dir) = OrderBy_DESC;    }
+#line 2209 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    break;
+
+  case 76: /* opt_asc_desc: %empty  */
+#line 425 "/home/emma/db2026/src/parser/yacc.y"
+            { (yyval.sv_orderby_dir) = OrderBy_DEFAULT; }
+#line 2215 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    break;
+
+  case 77: /* set_knob_type: ENABLE_NESTLOOP  */
+#line 429 "/home/emma/db2026/src/parser/yacc.y"
+                    { (yyval.sv_setKnobType) = EnableNestLoop; }
+#line 2221 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+    break;
+
+  case 78: /* set_knob_type: ENABLE_SORTMERGE  */
+#line 430 "/home/emma/db2026/src/parser/yacc.y"
                          { (yyval.sv_setKnobType) = EnableSortMerge; }
-#line 2213 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2227 "/home/emma/db2026/src/parser/yacc.tab.cpp"
     break;
 
 
-#line 2217 "/home/emma/db2026/src/parser/yacc.tab.cpp"
+#line 2231 "/home/emma/db2026/src/parser/yacc.tab.cpp"
 
       default: break;
     }
@@ -2442,5 +2456,5 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 429 "/home/emma/db2026/src/parser/yacc.y"
+#line 436 "/home/emma/db2026/src/parser/yacc.y"
 
