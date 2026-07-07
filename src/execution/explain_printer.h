@@ -202,7 +202,6 @@ class ExplainPrinter {
                 return;
             }
             collect_plan_stats(x->subplan_, proj->child(), rows_map);
-            // 投影不改变行数
             rows_map[plan.get()] = get_rows(x->subplan_.get(), rows_map);
             return;
         }
@@ -220,16 +219,14 @@ class ExplainPrinter {
             if (!join || !join->left_child() || !join->right_child()) {
                 return;
             }
+            // 后序：先统计左子树，再统计右子树
             collect_plan_stats(x->left_, join->left_child(), rows_map);
             size_t left_rows = get_rows(x->left_.get(), rows_map);
             collect_plan_stats(x->right_, join->right_child(), rows_map);
-            // NLJ 内表重复执行，累计右侧子树行数（遇嵌套 Join 停止向下乘算）
+            // NLJ 内表累计访问次数
             multiply_right_subtree_rows(x->right_, left_rows, rows_map);
-            size_t cnt = count_executor_output(exec);
-            if (cnt == 0 && left_rows > 0) {
-                cnt = left_rows;
-            }
-            rows_map[plan.get()] = cnt;
+            // 最后执行 Join 统计输出 tuple 数
+            rows_map[plan.get()] = count_executor_output(exec);
             return;
         }
         if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
@@ -291,8 +288,13 @@ class ExplainPrinter {
             return;
         }
         if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
+            std::string scan_type = (x->tag == T_IndexScan) ? "IndexScan" : "SeqScan";
             os << indent_str(depth) << "Scan(table=" << x->tab_name_
-               << ", type=SeqScan, rows=" << get_rows(plan.get(), rows_map) << ")\n";
+               << ", type=" << scan_type << ", rows=" << get_rows(plan.get(), rows_map);
+            if (x->tag == T_IndexScan && !x->index_col_names_.empty()) {
+                os << ", using_index=(" << x->index_col_names_[0] << ")";
+            }
+            os << ")\n";
             return;
         }
     }

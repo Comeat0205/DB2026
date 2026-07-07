@@ -86,6 +86,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     }
 
     void beginTuple() override {
+        is_end_ = false;
         // 物化右表，再遍历左表做嵌套循环
         right_tuples_.clear();
         for (right_->beginTuple(); !right_->is_end(); right_->nextTuple()) {

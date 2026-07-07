@@ -150,7 +150,10 @@ class Portal
             }
             case PORTAL_EXPLAIN_ANALYZE:
             {
-                ql->explain_analyze(portal->plan, std::move(portal->root), context);
+                // 独立构建 executor 用于统计 rows，避免遍历污染执行状态
+                auto exp = std::dynamic_pointer_cast<ExplainAnalyzePlan>(portal->plan);
+                std::unique_ptr<AbstractExecutor> stats_root = convert_plan_executor(exp->subplan_, context);
+                ql->explain_analyze(portal->plan, std::move(stats_root), context);
                 break;
             }
             default:
