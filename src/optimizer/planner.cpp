@@ -125,6 +125,116 @@ static void collect_all_conds(const std::shared_ptr<Plan> &plan, std::vector<Con
     }
 }
 
+static void collect_plan_tables(const std::shared_ptr<Plan> &plan, std::set<std::string> &tables) {
+    if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
+        tables.insert(x->tab_name_);
+    } else if (auto x = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+        collect_plan_tables(x->subplan_, tables);
+    } else if (auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)) {
+        collect_plan_tables(x->subplan_, tables);
+    } else if (auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
+        collect_plan_tables(x->left_, tables);
+        collect_plan_tables(x->right_, tables);
+    } else if (auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
+        collect_plan_tables(x->subplan_, tables);
+    }
+}
+
+static bool subtree_contains_table(const std::shared_ptr<Plan> &plan, const std::string &tab) {
+    std::set<std::string> tables;
+    collect_plan_tables(plan, tables);
+    return tables.count(tab) > 0;
+}
+
+/** 单表条件所属表名；跨表条件返回空串 */
+static std::string single_table_of_cond(const Condition &c) {
+    if (c.is_rhs_val) {
+        return c.lhs_col.tab_name;
+    }
+    if (c.lhs_col.tab_name == c.rhs_col.tab_name) {
+        return c.lhs_col.tab_name;
+    }
+    return "";
+}
+
+static bool is_single_table_cond(const Condition &c, const std::string &tab) {
+    return single_table_of_cond(c) == tab;
+}
+
+static void swap_cond_sides(Condition &cond) {
+    static const std::map<CompOp, CompOp> swap_op = {
+        {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
+    };
+    std::swap(cond.lhs_col, cond.rhs_col);
+    cond.op = swap_op.at(cond.op);
+}
+
+/** 将条件追加到子树顶部的 Filter，若无 Filter 则新建 */
+static void append_cond_to_subtree(std::shared_ptr<Plan> &plan, Condition cond) {
+    if (auto filter = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+        filter->conds_.push_back(std::move(cond));
+        return;
+    }
+    plan = std::make_shared<FilterPlan>(T_Filter, plan, std::vector<Condition>{std::move(cond)});
+}
+
+/** 判断条件能否作为单表谓词写入 Scan */
+static bool normalize_and_belongs_to_table(Condition &c, const std::string &tab) {
+    if (c.is_rhs_val) {
+        return c.lhs_col.tab_name == tab;
+    }
+    if (c.lhs_col.tab_name == tab && c.rhs_col.tab_name == tab) {
+        return true;
+    }
+    return false;
+}
+
+/** 将 Join 上的 Filter 条件下推到左右子树 */
+static std::shared_ptr<Plan> push_filters_down(const std::shared_ptr<Plan> &plan) {
+    if (auto join = std::dynamic_pointer_cast<JoinPlan>(plan)) {
+        join->left_ = push_filters_down(join->left_);
+        join->right_ = push_filters_down(join->right_);
+        return plan;
+    }
+    if (auto proj = std::dynamic_pointer_cast<ProjectionPlan>(plan)) {
+        proj->subplan_ = push_filters_down(proj->subplan_);
+        return plan;
+    }
+    if (auto sort = std::dynamic_pointer_cast<SortPlan>(plan)) {
+        sort->subplan_ = push_filters_down(sort->subplan_);
+        return plan;
+    }
+    if (auto filter = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+        if (auto join = std::dynamic_pointer_cast<JoinPlan>(filter->subplan_)) {
+            std::vector<Condition> remaining;
+            for (auto &cond : filter->conds_) {
+                Condition c = cond;
+                std::string tab = single_table_of_cond(c);
+                if (!tab.empty() && subtree_contains_table(join->left_, tab) &&
+                    !subtree_contains_table(join->right_, tab)) {
+                    append_cond_to_subtree(join->left_, std::move(c));
+                } else if (!tab.empty() && subtree_contains_table(join->right_, tab) &&
+                           !subtree_contains_table(join->left_, tab)) {
+                    append_cond_to_subtree(join->right_, std::move(c));
+                } else {
+                    remaining.push_back(std::move(cond));
+                }
+            }
+            join->left_ = push_filters_down(join->left_);
+            join->right_ = push_filters_down(join->right_);
+            if (remaining.empty()) {
+                return join;
+            }
+            filter->conds_ = std::move(remaining);
+            filter->subplan_ = join;
+            return plan;
+        }
+        filter->subplan_ = push_filters_down(filter->subplan_);
+        return plan;
+    }
+    return plan;
+}
+
 /** 将 Scan 上的条件拆分为独立 Filter 节点（IndexScan 保留条件以正确走索引） */
 static std::shared_ptr<Plan> split_filters(const std::shared_ptr<Plan> &plan) {
     if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
@@ -278,13 +388,10 @@ bool Planner::get_index_cols(std::string tab_name, std::vector<Condition> &curr_
  * @return std::vector<Condition>
  */
 std::vector<Condition> pop_conds(std::vector<Condition> &conds, std::string tab_names) {
-    // auto has_tab = [&](const std::string &tab_name) {
-    //     return std::find(tab_names.begin(), tab_names.end(), tab_name) != tab_names.end();
-    // };
     std::vector<Condition> solved_conds;
     auto it = conds.begin();
     while (it != conds.end()) {
-        if ((tab_names.compare(it->lhs_col.tab_name) == 0 && it->is_rhs_val) || (it->lhs_col.tab_name.compare(it->rhs_col.tab_name) == 0)) {
+        if (is_single_table_cond(*it, tab_names)) {
             solved_conds.emplace_back(std::move(*it));
             it = conds.erase(it);
         } else {
@@ -296,45 +403,55 @@ std::vector<Condition> pop_conds(std::vector<Condition> &conds, std::string tab_
 
 int push_conds(Condition *cond, std::shared_ptr<Plan> plan)
 {
-    if(auto x = std::dynamic_pointer_cast<ScanPlan>(plan))
-    {
-        if(x->tab_name_.compare(cond->lhs_col.tab_name) == 0) {
-            return 1;
-        } else if(x->tab_name_.compare(cond->rhs_col.tab_name) == 0){
-            return 2;
-        } else {
-            return 0;
-        }
+    if (!plan) {
+        return 0;
     }
-    else if(auto x = std::dynamic_pointer_cast<JoinPlan>(plan))
-    {
-        int left_res = push_conds(cond, x->left_);
-        // 条件已经下推到左子节点
-        if(left_res == 3){
+    if (auto x = std::dynamic_pointer_cast<FilterPlan>(plan)) {
+        return push_conds(cond, x->subplan_) == 3 ? 3 : 0;
+    }
+    if (auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)) {
+        return push_conds(cond, x->subplan_) == 3 ? 3 : 0;
+    }
+    if (auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
+        return push_conds(cond, x->subplan_) == 3 ? 3 : 0;
+    }
+    if (auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
+        Condition c = *cond;
+        if (normalize_and_belongs_to_table(c, x->tab_name_)) {
+            x->conds_.push_back(c);
+            x->fed_conds_.push_back(c);
             return 3;
         }
-        int right_res = push_conds(cond, x->right_);
-        // 条件已经下推到右子节点
-        if(right_res == 3){
+        return 0;
+    }
+    if (auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
+        Condition c = *cond;
+        if (push_conds(&c, x->left_) == 3) {
             return 3;
         }
-        // 左子节点或右子节点有一个没有匹配到条件的列
-        if(left_res == 0 || right_res == 0) {
-            return left_res + right_res;
+        c = *cond;
+        if (push_conds(&c, x->right_) == 3) {
+            return 3;
         }
-        // 左子节点匹配到条件的右边
-        if(left_res == 2) {
-            // 需要将左右两边的条件变换位置
-            std::map<CompOp, CompOp> swap_op = {
-                {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
-            };
-            std::swap(cond->lhs_col, cond->rhs_col);
-            cond->op = swap_op.at(cond->op);
+        if (!cond->is_rhs_val) {
+            bool lhs_in_left = subtree_contains_table(x->left_, cond->lhs_col.tab_name);
+            bool rhs_in_right = subtree_contains_table(x->right_, cond->rhs_col.tab_name);
+            bool lhs_in_right = subtree_contains_table(x->right_, cond->lhs_col.tab_name);
+            bool rhs_in_left = subtree_contains_table(x->left_, cond->rhs_col.tab_name);
+            if (lhs_in_left && rhs_in_right) {
+                x->conds_.emplace_back(*cond);
+                return 3;
+            }
+            if (lhs_in_right && rhs_in_left) {
+                Condition jc = *cond;
+                swap_cond_sides(jc);
+                x->conds_.emplace_back(std::move(jc));
+                return 3;
+            }
         }
-        x->conds_.emplace_back(std::move(*cond));
-        return 3;
+        return 0;
     }
-    return false;
+    return 0;
 }
 
 std::shared_ptr<Plan> pop_scan(int *scantbl, std::string table, std::vector<std::string> &joined_tables, 
@@ -615,6 +732,8 @@ std::shared_ptr<Plan> Planner::generate_select_plan(std::shared_ptr<Query> query
 
     // 选择下推：将 Scan 条件拆分为 Filter 节点
     plannerRoot = split_filters(plannerRoot);
+    // 将 Join 上的 Filter 继续下推到左右子树
+    plannerRoot = push_filters_down(plannerRoot);
 
     // 投影下推：非 SELECT * 时在连接分支保留必要列
     if (!query->is_select_all) {
