@@ -205,7 +205,14 @@ static std::shared_ptr<Plan> push_filters_down(const std::shared_ptr<Plan> &plan
         return plan;
     }
     if (auto filter = std::dynamic_pointer_cast<FilterPlan>(plan)) {
-        if (auto join = std::dynamic_pointer_cast<JoinPlan>(filter->subplan_)) {
+        // 若 Filter 与 Join 之间存在投影节点，先穿透再下推
+        std::shared_ptr<Plan> join_plan = filter->subplan_;
+        std::shared_ptr<ProjectionPlan> above_proj;
+        if (auto proj = std::dynamic_pointer_cast<ProjectionPlan>(join_plan)) {
+            above_proj = proj;
+            join_plan = proj->subplan_;
+        }
+        if (auto join = std::dynamic_pointer_cast<JoinPlan>(join_plan)) {
             std::vector<Condition> remaining;
             for (auto &cond : filter->conds_) {
                 Condition c = cond;
@@ -222,11 +229,14 @@ static std::shared_ptr<Plan> push_filters_down(const std::shared_ptr<Plan> &plan
             }
             join->left_ = push_filters_down(join->left_);
             join->right_ = push_filters_down(join->right_);
+            if (above_proj) {
+                above_proj->subplan_ = join;
+            }
             if (remaining.empty()) {
-                return join;
+                return above_proj ? static_cast<std::shared_ptr<Plan>>(above_proj) : static_cast<std::shared_ptr<Plan>>(join);
             }
             filter->conds_ = std::move(remaining);
-            filter->subplan_ = join;
+            filter->subplan_ = above_proj ? static_cast<std::shared_ptr<Plan>>(above_proj) : static_cast<std::shared_ptr<Plan>>(join);
             return plan;
         }
         filter->subplan_ = push_filters_down(filter->subplan_);
@@ -735,7 +745,7 @@ std::shared_ptr<Plan> Planner::generate_select_plan(std::shared_ptr<Query> query
     // 将 Join 上的 Filter 继续下推到左右子树
     plannerRoot = push_filters_down(plannerRoot);
 
-    // 投影下推：非 SELECT * 时在连接分支保留必要列
+    // 投影下推：非 SELECT * 时在连接分支保留必要列（含 ORDER BY 列）
     if (!query->is_select_all) {
         std::vector<Condition> all_conds;
         collect_all_conds(plannerRoot, all_conds);
@@ -743,7 +753,34 @@ std::shared_ptr<Plan> Planner::generate_select_plan(std::shared_ptr<Query> query
         for (auto &j : query->joins) {
             all_conds.insert(all_conds.end(), j.conds.begin(), j.conds.end());
         }
-        plannerRoot = push_projection(plannerRoot, sel_cols, all_conds);
+        std::vector<TabCol> proj_cols = sel_cols;
+        // 保留 ORDER BY 列，避免投影下推后排序缺列
+        auto sel_stmt = get_select_stmt(query->parse);
+        if (sel_stmt && sel_stmt->has_sort) {
+            std::vector<ColMeta> all_cols;
+            for (auto &tab : query->tables) {
+                // 这里db_不能写成get_db(), 注意要传指针
+                const auto &tab_cols = sm_manager_->db_.get_table(tab).cols;
+                all_cols.insert(all_cols.end(), tab_cols.begin(), tab_cols.end());
+            }
+            for (auto &col : all_cols) {
+                if (col.name == sel_stmt->order->cols->col_name) {
+                    TabCol order_col = {.tab_name = col.tab_name, .col_name = col.name};
+                    bool found = false;
+                    for (auto &c : proj_cols) {
+                        if (c.tab_name == order_col.tab_name && c.col_name == order_col.col_name) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        proj_cols.push_back(order_col);
+                    }
+                    break;
+                }
+            }
+        }
+        plannerRoot = push_projection(plannerRoot, proj_cols, all_conds);
     }
 
     plannerRoot = std::make_shared<ProjectionPlan>(T_Projection, std::move(plannerRoot), 
